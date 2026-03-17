@@ -6,185 +6,199 @@ import net.runelite.client.config.*;
 @ConfigGroup("visibilityenhancer")
 public interface VisibilityEnhancerConfig extends Config
 {
+	// --- OPACITY SECTION ---
 	@ConfigSection(
-			name = "Self Settings",
-			description = "Your character settings",
+			name = "Opacity & Range",
+			description = "Control how transparent players and projectiles appear.",
 			position = 1
 	)
-	String selfSection = "selfSection";
-
-	@ConfigItem(
-			keyName = "selfClearGround",
-			name = "Clear Ground View (Self)",
-			position = 1,
-			section = selfSection,
-			description = "Hides your Legs, Boots, Shield, and Cape to see the ground better"
-	)
-	default boolean selfClearGround() { return false; }
+	String opacitySection = "opacitySection";
 
 	@Range(min = 0, max = 100)
 	@ConfigItem(
 			keyName = "selfOpacity",
 			name = "My Opacity",
-			position = 2,
-			section = selfSection,
-			description = "Transparency of your character"
+			position = 1,
+			section = opacitySection,
+			description = "Transparency of your own character"
 	)
 	default int selfOpacity() { return 100; }
+
+	@Range(min = 0, max = 100)
+	@ConfigItem(
+			keyName = "playerOpacity",
+			name = "Ghost Opacity",
+			position = 2,
+			section = opacitySection,
+			description = "Transparency of nearby players"
+	)
+	default int playerOpacity() { return 100; }
 
 	@Range(min = 0, max = 100)
 	@ConfigItem(
 			keyName = "myProjectileOpacity",
 			name = "My Projectile Opacity",
 			position = 3,
-			section = selfSection,
+			section = opacitySection,
 			description = "Transparency of projectiles you fire"
 	)
 	default int myProjectileOpacity() { return 100; }
 
-	@ConfigItem(
-			keyName = "selfOutline",
-			name = "Outline Myself",
-			position = 4,
-			section = selfSection,
-			description = "Enable outline for yourself"
-	)
-	default boolean selfOutline() { return false; }
-
-	@Alpha
-	@ConfigItem(
-			keyName = "selfOutlineColor",
-			name = "Self Outline Color",
-			position = 5,
-			section = selfSection,
-			description = "Color and transparency of your outline"
-	)
-	default Color selfOutlineColor() { return new Color(255, 255, 255, 255); }
-
-	@ConfigSection(
-			name = "Other Players",
-			description = "Settings for nearby players",
-			position = 10
-	)
-	String othersSection = "othersSection";
-
-	@ConfigItem(
-			keyName = "othersClearGround",
-			name = "Clear Ground View (Others)",
-			position = 10,
-			section = othersSection,
-			description = "Hides Legs, Boots, Shield, and Cape on ghosted players"
-	)
-	default boolean othersClearGround() { return false; }
-
-	@Range(min = 0, max = 100)
-	@ConfigItem(
-			keyName = "playerOpacity",
-			name = "Ghost Opacity",
-			position = 11,
-			section = othersSection,
-			description = "Transparency of nearby players and their projectiles"
-	)
-	default int playerOpacity() { return 50; }
-
 	@Range(min = 1, max = 50)
 	@ConfigItem(
 			keyName = "proximityRange",
-			name = "Proximity Distance",
-			position = 12,
-			section = othersSection,
-			description = "Radius for the effect"
+			name = "Ghosting Distance",
+			position = 4,
+			section = opacitySection,
+			description = "Radius (in tiles) around you where players will be ghosted"
 	)
 	default int proximityRange() { return 10; }
 
 	@ConfigItem(
 			keyName = "ignoreFriends",
 			name = "Ignore Friends",
-			position = 13,
-			section = othersSection,
-			description = "Don't ghost your friends"
+			position = 5,
+			section = opacitySection,
+			description = "Prevents friends from being ghosted/transparent"
 	)
 	default boolean ignoreFriends() { return false; }
 
 	@ConfigItem(
 			keyName = "limitAffectedPlayers",
-			name = "Limit affected players",
-			position = 14,
-			section = othersSection,
-			description = "Limit players for performance"
+			name = "Limit Max Ghosts",
+			position = 6,
+			section = opacitySection,
+			description = "Limits the number of players affected for performance"
 	)
 	default boolean limitAffectedPlayers() { return true; }
 
 	@Range(min = 1, max = 100)
 	@ConfigItem(
 			keyName = "maxAffectedPlayers",
-			name = "Max affected players",
-			position = 15,
-			section = othersSection,
-			description = "Max players to ghost"
+			name = "Max Ghosts",
+			position = 7,
+			section = opacitySection,
+			description = "The maximum number of players to apply effects to"
 	)
 	default int maxAffectedPlayers() { return 8; }
 
-	@ConfigItem(
-			keyName = "othersOutline",
-			name = "Outline Others",
-			position = 16,
-			section = othersSection,
-			description = "Enable outline for ghosted players"
-	)
-	default boolean othersOutline() { return false; }
 
-	@Alpha
-	@ConfigItem(
-			keyName = "othersOutlineColor",
-			name = "Others Outline Color",
-			position = 17,
-			section = othersSection,
-			description = "Color/Alpha of others' outline"
+	// --- EXTRAS SECTION ---
+	@ConfigSection(
+			name = "Visibility Extras",
+			description = "Ground view filters and projectile cleanup.",
+			position = 10
 	)
-	default Color othersOutlineColor() { return new Color(255, 255, 255, 150); }
+	String extrasSection = "extrasSection";
+
+	@ConfigItem(
+			keyName = "selfClearGround",
+			name = "Clear Ground (Self)",
+			position = 1,
+			section = extrasSection,
+			description = "Hides your Cape, Shield, Legs, and Boots to see ground markers better"
+	)
+	default boolean selfClearGround() { return false; }
+
+	@ConfigItem(
+			keyName = "othersClearGround",
+			name = "Clear Ground (Others)",
+			position = 2,
+			section = extrasSection,
+			description = "Hides Cape, Shield, Legs, and Boots on nearby ghosted players"
+	)
+	default boolean othersClearGround() { return false; }
 
 	@ConfigItem(
 			keyName = "hideOthersProjectiles",
 			name = "Hide Others' Projectiles",
-			position = 18,
-			section = othersSection,
-			description = "Completely hides projectiles from other sources"
+			position = 3,
+			section = extrasSection,
+			description = "Completely hides projectiles that didn't come from you"
 	)
 	default boolean hideOthersProjectiles() { return false; }
 
 	@ConfigItem(
 			keyName = "hideGhostExtras",
 			name = "Hide Ghost Overheads/Hits",
-			position = 19,
-			section = othersSection,
+			position = 4,
+			section = extrasSection,
 			description = "Hides overhead prayers and hitsplats for ghosted players"
 	)
-	default boolean hideGhostExtras() { return true; }
+	default boolean hideGhostExtras() { return false; }
+
+
+	// --- OUTLINE SECTION ---
+	@ConfigSection(
+			name = "Outlines",
+			description = "Settings for player outlines and colors.",
+			position = 20
+	)
+	String outlineSection = "outlineSection";
+
+	@ConfigItem(
+			keyName = "selfOutline",
+			name = "Outline Myself",
+			position = 1,
+			section = outlineSection,
+			description = "Enable an outline for your character"
+	)
+	default boolean selfOutline() { return false; }
+
+	@Alpha
+	@ConfigItem(
+			keyName = "selfOutlineColor",
+			name = "My Outline Color",
+			position = 2,
+			section = outlineSection,
+			description = "The color of your own outline"
+	)
+	default Color selfOutlineColor() { return Color.WHITE; }
+
+	@ConfigItem(
+			keyName = "othersOutline",
+			name = "Outline Ghosts",
+			position = 3,
+			section = outlineSection,
+			description = "Enable outlines for nearby ghosted players"
+	)
+	default boolean othersOutline() { return false; }
+
+	@Alpha
+	@ConfigItem(
+			keyName = "othersOutlineColor",
+			name = "Ghost Outline Color",
+			position = 4,
+			section = outlineSection,
+			description = "The color of ghosted player outlines"
+	)
+	default Color othersOutlineColor() { return new Color(255, 255, 255, 150); }
 
 	@ConfigItem(
 			keyName = "hideStackedOutlines",
 			name = "Hide Stacked Outlines",
-			position = 20,
-			section = othersSection,
-			description = "Only shows one outline per tile on stacked players"
+			position = 5,
+			section = outlineSection,
+			description = "Only shows one outline per tile if players are standing on each other"
 	)
 	default boolean hideStackedOutlines() { return true; }
 
+
+	// --- OUTLINE STYLE SECTION ---
 	@ConfigSection(
 			name = "Outline Style",
-			description = "Adjust the thickness and blur of the outlines",
-			position = 21
+			description = "Visual aesthetics of the outlines (Global settings).",
+			position = 30
 	)
-	String outlineStyleSection = "outlineStyleSection";
+	String styleSection = "styleSection";
 
 	@Range(min = 1, max = 10)
 	@ConfigItem(
 			keyName = "outlineWidth",
 			name = "Line Thickness",
-			position = 22,
-			section = outlineStyleSection,
-			description = "Thickness of the main line"
+			position = 1,
+			section = styleSection,
+			description = "Thickness of the primary outline"
 	)
 	default int outlineWidth() { return 1; }
 
@@ -192,18 +206,18 @@ public interface VisibilityEnhancerConfig extends Config
 	@ConfigItem(
 			keyName = "outlineFeather",
 			name = "Line Blur (Feather)",
-			position = 23,
-			section = outlineStyleSection,
-			description = "Softness of the main line"
+			position = 2,
+			section = styleSection,
+			description = "How soft the edges of the primary line are"
 	)
 	default int outlineFeather() { return 0; }
 
 	@ConfigItem(
 			keyName = "enableGlow",
 			name = "Add Outer Glow",
-			position = 24,
-			section = outlineStyleSection,
-			description = "Adds a secondary blurred layer"
+			position = 3,
+			section = styleSection,
+			description = "Adds a secondary, wider blurred layer behind the primary line"
 	)
 	default boolean enableGlow() { return false; }
 
@@ -211,8 +225,8 @@ public interface VisibilityEnhancerConfig extends Config
 	@ConfigItem(
 			keyName = "glowWidth",
 			name = "Glow Thickness",
-			position = 25,
-			section = outlineStyleSection,
+			position = 4,
+			section = styleSection,
 			description = "Width of the glow layer"
 	)
 	default int glowWidth() { return 4; }
@@ -221,9 +235,9 @@ public interface VisibilityEnhancerConfig extends Config
 	@ConfigItem(
 			keyName = "glowFeather",
 			name = "Glow Blur",
-			position = 26,
-			section = outlineStyleSection,
-			description = "Softness of the glow layer"
+			position = 5,
+			section = styleSection,
+			description = "Softness/Feathering of the glow layer"
 	)
 	default int glowFeather() { return 4; }
 }

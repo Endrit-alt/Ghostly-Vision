@@ -18,11 +18,13 @@ import net.runelite.client.ui.overlay.OverlayManager;
 
 @PluginDescriptor(
 		name = "Visibility Enhancer",
-		description = "Teammate opacity, ground-view filters, and outlines for raids.",
-		tags = {"raid", "opacity", "outline", "equipment"}
+		description = "Teammate opacity, ground-view filters, and outlines for raids/PvP.",
+		tags = {"raid", "pvp", "opacity", "outline", "equipment"}
 )
 public class VisibilityEnhancer extends Plugin
 {
+	private static final long INTERACTION_TIMEOUT_MS = 20000; // 20 seconds
+
 	@Inject
 	private Client client;
 
@@ -42,6 +44,7 @@ public class VisibilityEnhancer extends Plugin
 	private final Set<Player> ghostedPlayers = new HashSet<>();
 
 	private final Map<Player, int[]> originalEquipmentMap = new HashMap<>();
+	private final Map<Player, Long> lastInteractionMap = new HashMap<>();
 	private final Set<Projectile> myProjectiles = new HashSet<>();
 
 	private final Hooks.RenderableDrawListener drawListener = this::shouldDraw;
@@ -65,6 +68,7 @@ public class VisibilityEnhancer extends Plugin
 		}
 		ghostedPlayers.clear();
 		originalEquipmentMap.clear();
+		lastInteractionMap.clear();
 		myProjectiles.clear();
 	}
 
@@ -72,26 +76,16 @@ public class VisibilityEnhancer extends Plugin
 	public void onProjectileMoved(ProjectileMoved event)
 	{
 		Projectile proj = event.getProjectile();
-
-		// Only check projectiles that JUST spawned
 		if (proj.getStartCycle() != client.getGameCycle()) return;
 
 		Player local = client.getLocalPlayer();
 		if (local == null) return;
 
-		// Use getLocalLocation to find where you are on the grid
 		LocalPoint lp = local.getLocalLocation();
-
-		// We check if the projectile started within a small radius of your center.
-		// OSRS tiles are 128x128 units. A 64-unit buffer ensures it catches
-		// projectiles even if you're slightly offset during an animation.
+		// Increased buffer and check to ensure powered staves like Shadow are caught correctly
 		int distSq = (int) (Math.pow(proj.getX1() - lp.getX(), 2) + Math.pow(proj.getY1() - lp.getY(), 2));
 
-		// 128*128 is one full tile radius. We'll use 150 to be safe for Shadow animations.
-		boolean startsOnMe = distSq < (150 * 150);
-		boolean isAttacking = local.getAnimation() != -1;
-
-		if (startsOnMe && isAttacking)
+		if (distSq < (180 * 180) && local.getAnimation() != -1)
 		{
 			myProjectiles.add(proj);
 		}
@@ -103,17 +97,27 @@ public class VisibilityEnhancer extends Plugin
 		Player p = event.getPlayer();
 		ghostedPlayers.remove(p);
 		originalEquipmentMap.remove(p);
+		lastInteractionMap.remove(p);
 	}
 
 	@Subscribe
 	public void onPlayerChanged(PlayerChanged event)
 	{
 		Player p = event.getPlayer();
-		if (p == null) return;
+		Player local = client.getLocalPlayer();
+		if (p == null || local == null) return;
 
-		if (p == client.getLocalPlayer())
+		if (p == local)
 		{
+			// FIX: When you change gear, forget the old "original" look so we grab the new one
+			originalEquipmentMap.remove(p);
 			if (config.selfClearGround()) applyClothingFilter(p);
+			return;
+		}
+
+		if (isRecentlyInteracting(p, local))
+		{
+			restorePlayer(p);
 			return;
 		}
 
@@ -146,11 +150,22 @@ public class VisibilityEnhancer extends Plugin
 		}
 
 		List<Player> inRange = new ArrayList<>();
+		long now = System.currentTimeMillis();
+
 		for (Player p : client.getPlayers())
 		{
 			if (p == null || p == local) continue;
 
-			if (config.ignoreFriends() && (p.isFriend() || client.isFriended(p.getName(), false)))
+			boolean isInteracting = p.getInteracting() == local || local.getInteracting() == p;
+			if (isInteracting)
+			{
+				lastInteractionMap.put(p, now);
+			}
+
+			boolean isFriend = config.ignoreFriends() && (p.isFriend() || client.isFriended(p.getName(), false));
+			boolean recentlyInteracted = (now - lastInteractionMap.getOrDefault(p, 0L)) < INTERACTION_TIMEOUT_MS;
+
+			if (isFriend || recentlyInteracted)
 			{
 				if (ghostedPlayers.contains(p)) restorePlayer(p);
 				continue;
@@ -188,6 +203,12 @@ public class VisibilityEnhancer extends Plugin
 
 		ghostedPlayers.clear();
 		ghostedPlayers.addAll(currentInRange);
+	}
+
+	private boolean isRecentlyInteracting(Player p, Player local)
+	{
+		if (p.getInteracting() == local || local.getInteracting() == p) return true;
+		return (System.currentTimeMillis() - lastInteractionMap.getOrDefault(p, 0L)) < INTERACTION_TIMEOUT_MS;
 	}
 
 	@Subscribe
@@ -250,12 +271,12 @@ public class VisibilityEnhancer extends Plugin
 
 		int[] equipmentIds = comp.getEquipmentIds();
 
+		// Save the look BEFORE we hide anything
 		if (!originalEquipmentMap.containsKey(player))
 		{
 			originalEquipmentMap.put(player, equipmentIds.clone());
 		}
 
-		// Hides: Cape, Shield, Legs, Boots
 		int[] slotsToHide = {
 				KitType.CAPE.getIndex(),
 				KitType.SHIELD.getIndex(),
@@ -319,6 +340,7 @@ public class VisibilityEnhancer extends Plugin
 		for (Player p : ghostedPlayers) restorePlayer(p);
 		ghostedPlayers.clear();
 		originalEquipmentMap.clear();
+		lastInteractionMap.clear();
 		myProjectiles.clear();
 	}
 
