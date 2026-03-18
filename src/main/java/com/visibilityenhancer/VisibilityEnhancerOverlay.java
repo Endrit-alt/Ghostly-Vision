@@ -76,7 +76,7 @@ public class VisibilityEnhancerOverlay extends Overlay
 		// --- Outline Rendering: Local Player ---
 		if (local != null && config.selfOutline())
 		{
-			if (config.useFloorTileOutline())
+			if (config.selfUseFloorTileOutline())
 			{
 				renderFloorTile(graphics, local, config.selfOutlineColor());
 			}
@@ -91,7 +91,7 @@ public class VisibilityEnhancerOverlay extends Overlay
 		{
 			renderedTiles.clear();
 			boolean hideStacked = config.hideStackedOutlines();
-			boolean useFloorTile = config.useFloorTileOutline();
+			boolean useFloorTile = config.othersUseFloorTileOutline(); // Updated method call
 			Color othersColor = config.othersOutlineColor();
 
 			// OPTIMIZATION: Clear and reuse list instead of instantiating new ArrayList
@@ -135,22 +135,23 @@ public class VisibilityEnhancerOverlay extends Overlay
 		}
 
 		// --- Transparent Prayer & Text Rendering ---
-		boolean customPrayers = config.customTransparentPrayers();
+		boolean selfCustomPrayers = config.selfTransparentPrayers();
+		boolean othersCustomPrayers = config.othersTransparentPrayers();
 		boolean hideGhostExtras = config.hideGhostExtras();
 
 		// Handle local player
-		if (customPrayers && local != null)
+		if (selfCustomPrayers && local != null)
 		{
 			drawTransparentPrayer(graphics, local, 100);
 			drawOverheadText(graphics, local);
 		}
 
 		// Handle ghosted players
-		if (customPrayers || hideGhostExtras)
+		if (othersCustomPrayers || hideGhostExtras)
 		{
 			for (Player player : plugin.getGhostedPlayers())
 			{
-				if (customPrayers)
+				if (othersCustomPrayers)
 				{
 					drawTransparentPrayer(graphics, player, config.playerOpacity());
 				}

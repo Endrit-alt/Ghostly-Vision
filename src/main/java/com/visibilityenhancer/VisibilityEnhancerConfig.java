@@ -128,13 +128,22 @@ public interface VisibilityEnhancerConfig extends Config
 	default boolean hideGhostExtras() { return false; }
 
 	@ConfigItem(
-			keyName = "customTransparentPrayers",
-			name = "Custom Transparent Prayers",
+			keyName = "customTransparentPrayers", // Kept for backwards compatibility
+			name = "Transparent Prayers (Ghosts)",
 			position = 5,
 			section = extrasSection,
-			description = "Hides native overheads and HP bars, replacing them with transparent prayer sprites"
+			description = "Hides native overheads and HP bars for ghosts, replacing them with transparent prayer sprites"
 	)
-	default boolean customTransparentPrayers() { return false; }
+	default boolean othersTransparentPrayers() { return false; }
+
+	@ConfigItem(
+			keyName = "selfTransparentPrayers",
+			name = "Transparent Prayers (Self)",
+			position = 6,
+			section = extrasSection,
+			description = "Hides your native overheads and HP bars, replacing them with transparent prayer sprites"
+	)
+	default boolean selfTransparentPrayers() { return false; }
 
 
 	// --- OUTLINE SECTION ---
@@ -193,13 +202,22 @@ public interface VisibilityEnhancerConfig extends Config
 	default boolean hideStackedOutlines() { return true; }
 
 	@ConfigItem(
-			keyName = "useFloorTileOutline",
-			name = "Use Floor Tile Outline",
+			keyName = "useFloorTileOutline", // Kept the same so current users keep their setting
+			name = "Ghosts Floor Tile",
 			position = 6,
 			section = outlineSection,
-			description = "Draws a square on the floor instead of outlining the 3D body"
+			description = "Draws a square on the floor instead of outlining the 3D body for ghosted players"
 	)
-	default boolean useFloorTileOutline() { return false; }
+	default boolean othersUseFloorTileOutline() { return false; }
+
+	@ConfigItem(
+			keyName = "selfUseFloorTileOutline",
+			name = "Self Floor Tile",
+			position = 7,
+			section = outlineSection,
+			description = "Draws a square on the floor instead of outlining the 3D body for your own character"
+	)
+	default boolean selfUseFloorTileOutline() { return false; }
 
 
 	// --- OUTLINE STYLE SECTION ---

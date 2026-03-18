@@ -314,7 +314,10 @@ public class VisibilityEnhancer extends Plugin
 			if (drawingUI)
 			{
 				// FORCE FALSE: Completely kills native prayers, HP bars, AND native text
-				if (config.customTransparentPrayers() && (isGhost || isLocal))
+				boolean hideSelfUI = isLocal && config.selfTransparentPrayers();
+				boolean hideGhostUI = isGhost && config.othersTransparentPrayers();
+
+				if (hideSelfUI || hideGhostUI)
 				{
 					return false;
 				}
