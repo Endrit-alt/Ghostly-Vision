@@ -404,7 +404,7 @@ public interface VisibilityEnhancerConfig extends Config
 	@ConfigItem(keyName = "toaAkkha", name = "Akkha", section = toaSection, position = 3, description = "Enable in Akkha room")
 	default boolean toaAkkha() { return true; }
 
-	@ConfigItem(keyName = "toaBaba", name = "Ba-Min", section = toaSection, position = 4, description = "Enable in Ba-Min room")
+	@ConfigItem(keyName = "toaBaba", name = "Ba-Ba", section = toaSection, position = 4, description = "Enable in Ba-Ba room")
 	default boolean toaBaba() { return true; }
 
 	@ConfigItem(keyName = "toaWardens", name = "Wardens", section = toaSection, position = 5, description = "Enable in Wardens room")
@@ -415,7 +415,7 @@ public interface VisibilityEnhancerConfig extends Config
 	@ConfigSection(name = "Chambers of Xeric", description = "CoX Rooms", position = 53)
 	String coxSection = "coxSection";
 
-	@ConfigItem(keyName = "coxOlm", name = "Great Olm", section = coxSection, position = 1, description = "Static region check for Olm.")
+	@ConfigItem(keyName = "coxOlm", name = "The Great Olm", section = coxSection, position = 1, description = "Static region check for Olm.")
 	default boolean coxOlm() { return true; }
 
 	// --- OTHER BOSSES ---
