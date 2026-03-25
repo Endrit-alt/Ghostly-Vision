@@ -33,12 +33,12 @@ THIS IS NOT A DYNAMIC PLUGIN. Opacity will not change dynamically, and has to be
 - Adjust outline settings
 
 <p align="center">
-  <img src="screenshots/screenshots/1.png" alt="Screenshot 1" width="977">
+  <img src="screenshots/1.png" alt="Screenshot 1" width="977">
 </p>
 <p align="center">
-  <img src="screenshots/screenshots/2.png" alt="Screenshot 2" width="977">
+  <img src="screenshots/2.png" alt="Screenshot 2" width="977">
 </p>
 <p align="center">
-  <img src="screenshots/screenshots/3.png" alt="Screenshot 3" width="977">
+  <img src="screenshots/3.png" alt="Screenshot 3" width="977">
 </p>
 
