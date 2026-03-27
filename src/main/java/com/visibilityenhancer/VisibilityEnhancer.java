@@ -600,7 +600,16 @@ public class VisibilityEnhancer extends Plugin
       if (renderable instanceof NPC && config.hideThralls())
       {
          NPC npc = (NPC) renderable;
+
+         // Hide Thralls
          if (THRALL_IDS.contains(npc.getId()))
+         {
+            return false;
+         }
+
+         // Hide other players' pets
+         net.runelite.api.NPCComposition comp = npc.getComposition();
+         if (comp != null && comp.isFollower() && npc != client.getFollower())
          {
             return false;
          }

@@ -55,7 +55,7 @@ public interface VisibilityEnhancerConfig extends Config
 			section = opacitySection,
 			description = "Radius (in tiles) around you where other players will be affected"
 	)
-	default int proximityRange() { return 10; }
+	default int proximityRange() { return 25; }
 
 	@ConfigItem(
 			keyName = "ignoreFriends",
@@ -183,10 +183,10 @@ public interface VisibilityEnhancerConfig extends Config
 
 	@ConfigItem(
 			keyName = "hideThralls",
-			name = "Hide Thralls",
+			name = "Hide Thralls & Pets",
 			position = 9,
 			section = extrasSection,
-			description = "Completely hides all Arceeus thralls"
+			description = "Completely hides all Arceeus thralls and players' pets"
 	)
 	default boolean hideThralls() { return false; }
 
@@ -354,7 +354,7 @@ public interface VisibilityEnhancerConfig extends Config
 			name = "Toggle Plugin",
 			position = 1,
 			section = hotkeySection,
-			description = "Press this key to enable or disable the plugin's effects."
+			description = "Double Press this key to enable or disable the plugin's effects."
 	)
 	default Keybind toggleHotkey() { return Keybind.NOT_SET; }
 
