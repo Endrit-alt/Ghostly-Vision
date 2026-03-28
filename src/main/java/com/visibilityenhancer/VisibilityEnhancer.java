@@ -66,6 +66,7 @@ public class VisibilityEnhancer extends Plugin
 
    private final Map<Player, int[]> originalEquipmentMap = new HashMap<>();
    private final Set<Projectile> myProjectiles = new HashSet<>();
+   private final Map<byte[], byte[]> originalTransparencies = new WeakHashMap<>();
 
    private final Hooks.RenderableDrawListener drawListener = this::shouldDraw;
 
@@ -316,6 +317,13 @@ public class VisibilityEnhancer extends Plugin
    public void onPlayerDespawned(PlayerDespawned event)
    {
       Player p = event.getPlayer();
+
+      // Fix: Restore their clothing and opacity BEFORE we forget them
+      if (ghostedPlayers.contains(p) || originalEquipmentMap.containsKey(p))
+      {
+         restorePlayer(p);
+      }
+
       ghostedPlayers.remove(p);
       originalEquipmentMap.remove(p);
       customHitsplats.remove(p);
@@ -523,54 +531,103 @@ public class VisibilityEnhancer extends Plugin
       else restoreOpacity(local);
 
       int othersAlpha = clampAlpha(config.playerOpacity());
-      int myProjAlpha = clampAlpha(config.myProjectileOpacity());
+      int selfAlpha = clampAlpha(selfOpacity);
 
-      Set<Model> forceOpaque = new HashSet<>();
-      Set<Model> forceMyAlpha = new HashSet<>();
-      Set<Model> forceOthersAlpha = new HashSet<>();
+      Map<byte[], Model> arrayToModel = new HashMap<>();
+      Map<byte[], Integer> arrayState = new HashMap<>();
+
+      // Priority States
+      final int STATE_RESTORE = 0; // Highest priority
+      final int STATE_MINE = 1;    // Medium priority
+      final int STATE_OTHERS = 2;  // Lowest priority
 
       for (Projectile proj : client.getProjectiles())
       {
          Model m = proj.getModel();
          if (m == null) continue;
 
+         byte[] trans = m.getFaceTransparencies();
+         if (trans == null || trans.length == 0) continue;
+
          Actor target = proj.getInteracting();
 
-         if (target == local || target == null) forceOpaque.add(m);
-         else if (myProjectiles.contains(proj))
+         // THE FIX: Added 'target == null' back so ground attacks (Wardens) are fully visible!
+         boolean isTargetingMeOrGround = (target == local || target == null);
+         boolean isMine = myProjectiles.contains(proj);
+
+         Integer currentState = arrayState.get(trans);
+
+         // Priority 1: Hitting you or the floor = 100% Natively
+         if (isTargetingMeOrGround)
          {
-            if (!forceOpaque.contains(m)) forceMyAlpha.add(m);
+            arrayState.put(trans, STATE_RESTORE);
+            arrayToModel.put(trans, m);
          }
+         // Priority 2: Your projectile = My Opacity
+         else if (isMine)
+         {
+            if (currentState == null || currentState != STATE_RESTORE)
+            {
+               arrayState.put(trans, STATE_MINE);
+               arrayToModel.put(trans, m);
+            }
+         }
+         // Priority 3: Other's projectile = Others Config
          else
          {
-            if (!forceOpaque.contains(m) && !forceMyAlpha.contains(m)) forceOthersAlpha.add(m);
+            if (currentState == null)
+            {
+               arrayState.put(trans, STATE_OTHERS);
+               arrayToModel.put(trans, m);
+            }
          }
       }
 
-      for (Model m : forceOthersAlpha)
+      // Apply the winning alpha to each shared array exactly once
+      for (Map.Entry<byte[], Integer> entry : arrayState.entrySet())
       {
-         byte[] trans = m.getFaceTransparencies();
-         if (trans != null && trans.length > 0 && (trans[0] & 0xFF) != othersAlpha)
+         byte[] trans = entry.getKey();
+         int state = entry.getValue();
+         Model m = arrayToModel.get(trans);
+
+         if (state == STATE_RESTORE)
          {
-            Arrays.fill(trans, (byte) othersAlpha);
+            restoreModelAlpha(m);
+         }
+         else if (state == STATE_MINE)
+         {
+            if (selfOpacity < 100) applyModelAlpha(m, selfAlpha);
+            else restoreModelAlpha(m);
+         }
+         else if (state == STATE_OTHERS)
+         {
+            if (config.playerOpacity() < 100) applyModelAlpha(m, othersAlpha);
+            else restoreModelAlpha(m);
          }
       }
 
-      for (Model m : forceMyAlpha)
-      {
-         byte[] trans = m.getFaceTransparencies();
-         if (trans != null && trans.length > 0 && (trans[0] & 0xFF) != myProjAlpha)
-         {
-            Arrays.fill(trans, (byte) myProjAlpha);
-         }
-      }
 
-      for (Model m : forceOpaque)
+      // Apply the winning alpha to each shared array exactly once
+      for (Map.Entry<byte[], Integer> entry : arrayState.entrySet())
       {
-         byte[] trans = m.getFaceTransparencies();
-         if (trans != null && trans.length > 0 && (trans[0] & 0xFF) != 0)
+         byte[] trans = entry.getKey();
+         int state = entry.getValue();
+         Model m = arrayToModel.get(trans);
+
+         if (state == STATE_RESTORE)
          {
-            Arrays.fill(trans, (byte) 0);
+            restoreModelAlpha(m);
+         }
+         else if (state == STATE_MINE)
+         {
+            // Now strictly mirrors your character's opacity
+            if (selfOpacity < 100) applyModelAlpha(m, selfAlpha);
+            else restoreModelAlpha(m);
+         }
+         else if (state == STATE_OTHERS)
+         {
+            if (config.playerOpacity() < 100) applyModelAlpha(m, othersAlpha);
+            else restoreModelAlpha(m);
          }
       }
    }
@@ -685,21 +742,14 @@ public class VisibilityEnhancer extends Plugin
             int targetOpacity = getEffectiveOpacity(player);
             if (newModel.getOverrideAmount() != 0) targetOpacity = 100;
 
-            byte[] trans = newModel.getFaceTransparencies();
             if (targetOpacity < 100)
             {
-               if (trans != null && trans.length > 0)
-               {
-                  int alpha = clampAlpha(targetOpacity);
-                  if ((trans[0] & 0xFF) != alpha) Arrays.fill(trans, (byte) alpha);
-               }
+               int alpha = clampAlpha(targetOpacity);
+               applyModelAlpha(newModel, alpha);
             }
             else
             {
-               if (trans != null && trans.length > 0 && (trans[0] & 0xFF) != 0)
-               {
-                  Arrays.fill(trans, (byte) 0);
-               }
+               restoreModelAlpha(newModel);
             }
          }
       }
@@ -726,6 +776,49 @@ public class VisibilityEnhancer extends Plugin
       return player != null && EXEMPT_ANIMATIONS.contains(player.getAnimation());
    }
 
+   private void applyModelAlpha(Model m, int alpha)
+   {
+      byte[] trans = m.getFaceTransparencies();
+      if (trans == null || trans.length == 0) return;
+
+      // Cache based on the array instance itself to survive OSRS model pooling
+      byte[] original = originalTransparencies.get(trans);
+      if (original == null)
+      {
+         original = trans.clone();
+         originalTransparencies.put(trans, original);
+      }
+
+      for (int i = 0; i < trans.length; i++)
+      {
+         int origAlpha = original[i] & 0xFF;
+
+         // Preserves native transparencies (like Avernic) by only taking the most transparent value
+         int combinedAlpha = Math.max(origAlpha, alpha);
+
+         if ((trans[i] & 0xFF) != combinedAlpha)
+         {
+            trans[i] = (byte) combinedAlpha;
+         }
+      }
+   }
+
+   private void restoreModelAlpha(Model m)
+   {
+      if (m == null) return;
+
+      byte[] trans = m.getFaceTransparencies();
+      if (trans == null || trans.length == 0) return;
+
+      // Look up the exact array instance in the cache
+      byte[] original = originalTransparencies.get(trans);
+      if (original != null && original.length == trans.length)
+      {
+         // Restore the exact original transparency values
+         System.arraycopy(original, 0, trans, 0, original.length);
+      }
+   }
+
    private void applyOpacity(Player p, int opacityPercent)
    {
       Model model = p.getModel();
@@ -737,11 +830,8 @@ public class VisibilityEnhancer extends Plugin
          return;
       }
 
-      byte[] trans = model.getFaceTransparencies();
-      if (trans == null || trans.length == 0) return;
-
       int alpha = clampAlpha(opacityPercent);
-      if ((trans[0] & 0xFF) != alpha) Arrays.fill(trans, (byte) alpha);
+      applyModelAlpha(model, alpha);
    }
 
    private void restoreOpacity(Player p)
@@ -749,11 +839,7 @@ public class VisibilityEnhancer extends Plugin
       Model model = p.getModel();
       if (model == null) return;
 
-      byte[] trans = model.getFaceTransparencies();
-      if (trans != null && trans.length > 0 && (trans[0] & 0xFF) != 0)
-      {
-         Arrays.fill(trans, (byte) 0);
-      }
+      restoreModelAlpha(model);
    }
 
    private void restorePlayer(Player p)
@@ -775,7 +861,7 @@ public class VisibilityEnhancer extends Plugin
       Set<Player> allAffected = new HashSet<>(ghostedPlayers);
       allAffected.addAll(originalEquipmentMap.keySet());
 
-      // FIX: Explicitly add the local player to the cleanup set
+      // Explicitly add the local player to the cleanup set
       Player local = client.getLocalPlayer();
       if (local != null)
       {
@@ -791,6 +877,20 @@ public class VisibilityEnhancer extends Plugin
       originalEquipmentMap.clear();
       myProjectiles.clear();
       customHitsplats.clear();
+
+      // Fix: Brute-force restore EVERY transparency array we ever touched.
+      // This catches despawned players and missing projectiles perfectly.
+      for (Map.Entry<byte[], byte[]> entry : originalTransparencies.entrySet())
+      {
+         byte[] trans = entry.getKey();
+         byte[] original = entry.getValue();
+
+         if (trans != null && original != null && trans.length == original.length)
+         {
+            System.arraycopy(original, 0, trans, 0, original.length);
+         }
+      }
+      originalTransparencies.clear();
    }
 
    private int clampAlpha(int opacityPercent)

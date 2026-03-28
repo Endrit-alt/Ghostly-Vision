@@ -21,7 +21,7 @@ public interface VisibilityEnhancerConfig extends Config
 			name = "My Opacity",
 			position = 1,
 			section = opacitySection,
-			description = "Transparency of your own character"
+			description = "Transparency of your own character and your projectiles"
 	)
 	default int selfOpacity() { return 100; }
 
@@ -35,17 +35,6 @@ public interface VisibilityEnhancerConfig extends Config
 			description = "Transparency of nearby players"
 	)
 	default int playerOpacity() { return 100; }
-
-	@Range(min = 0, max = 100)
-	@Units(Units.PERCENT)
-	@ConfigItem(
-			keyName = "myProjectileOpacity",
-			name = "My Projectile Opacity",
-			position = 3,
-			section = opacitySection,
-			description = "Transparency of projectiles you fire"
-	)
-	default int myProjectileOpacity() { return 100; }
 
 	@Range(min = 1, max = 50)
 	@ConfigItem(
