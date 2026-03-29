@@ -619,7 +619,7 @@ public class VisibilityEnhancer extends Plugin
          currentInRange.addAll(inRange);
       }
 
-      int othersOpacity = config.playerOpacity();
+      int othersOpacity = getEffectiveOthersOpacity();
       boolean hideOthersClothes = config.othersClearGround();
 
       for (Player p : currentInRange)
@@ -671,7 +671,8 @@ public class VisibilityEnhancer extends Plugin
          return;
       }
 
-      int selfOpacity = config.selfOpacity();
+      int selfOpacity = getEffectiveSelfOpacity();
+      int othersOpacity = getEffectiveOthersOpacity();
 
       if (selfOpacity < 100)
       {
@@ -682,7 +683,7 @@ public class VisibilityEnhancer extends Plugin
          restoreOpacity(local);
       }
 
-      int othersAlpha = clampAlpha(config.playerOpacity());
+      int othersAlpha = clampAlpha(othersOpacity);
       int selfAlpha = clampAlpha(selfOpacity);
 
       Map<byte[], Model> arrayToModel = new HashMap<>();
@@ -759,7 +760,7 @@ public class VisibilityEnhancer extends Plugin
          }
          else if (state == STATE_OTHERS)
          {
-            if (config.playerOpacity() < 100)
+            if (othersOpacity < 100)
             {
                applyModelAlpha(null, m, othersAlpha); // Null for non-player entities like projectiles
             }
@@ -815,6 +816,16 @@ public class VisibilityEnhancer extends Plugin
       return true;
    }
 
+   private int getEffectiveSelfOpacity()
+   {
+      return config.selfClearGround() ? 100 : config.selfOpacity();
+   }
+
+   private int getEffectiveOthersOpacity()
+   {
+      return config.othersClearGround() ? 100 : config.playerOpacity();
+   }
+
    private int getEffectiveOpacity(Player player)
    {
       Player local = client.getLocalPlayer();
@@ -825,10 +836,10 @@ public class VisibilityEnhancer extends Plugin
 
       if (player == local)
       {
-         return config.selfOpacity();
+         return getEffectiveSelfOpacity();
       }
 
-      return config.playerOpacity();
+      return getEffectiveOthersOpacity();
    }
 
    private void checkStateTransition()
