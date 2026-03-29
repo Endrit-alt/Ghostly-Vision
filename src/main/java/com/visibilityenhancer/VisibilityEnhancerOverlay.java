@@ -2,46 +2,45 @@ package com.visibilityenhancer;
 
 import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
+import java.awt.Color;
 import java.awt.Composite;
 import java.awt.Dimension;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
-import java.awt.Color;
 import java.awt.Polygon;
 import java.awt.Rectangle;
-import java.awt.FontMetrics;
 import java.awt.Stroke;
 import java.awt.image.BufferedImage;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.HashMap;
 import javax.inject.Inject;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
 import net.runelite.api.HeadIcon;
 import net.runelite.api.Model;
 import net.runelite.api.NPC;
+import net.runelite.api.Perspective;
 import net.runelite.api.Player;
 import net.runelite.api.Point;
 import net.runelite.api.SpriteID;
-import net.runelite.api.Perspective;
-
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.game.SpriteManager;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayPriority;
-import net.runelite.client.ui.overlay.outline.ModelOutlineRenderer;
 import net.runelite.client.ui.overlay.OverlayUtil;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.overlay.outline.ModelOutlineRenderer;
 import net.runelite.client.util.Text;
 
 public class VisibilityEnhancerOverlay extends Overlay
@@ -50,16 +49,14 @@ public class VisibilityEnhancerOverlay extends Overlay
 	private final VisibilityEnhancer plugin;
 	private final VisibilityEnhancerConfig config;
 	private final ModelOutlineRenderer modelOutlineRenderer;
-
 	private final SpriteManager spriteManager;
 
 	private final Set<WorldPoint> renderedTiles = new HashSet<>();
 	private final List<Player> sortedGhosts = new ArrayList<>(32);
 
-	// --- Spam Tracker Variables ---
-	private static final int MESSAGE_DISPLAY_DURATION_MS = 4000; // 4 seconds natural display time
-	private static final int MESSAGE_COOLDOWN_MS = 10000; // 10 seconds cooldown for SAME message
-	private static final int FAST_TYPING_COOLDOWN_MS = 1000; // 2 seconds between DIFFERENT messages
+	private static final int MESSAGE_DISPLAY_DURATION_MS = 4000;
+	private static final int MESSAGE_COOLDOWN_MS = 10000;
+	private static final int FAST_TYPING_COOLDOWN_MS = 1000;
 
 	private static final String[] WOO_MESSAGES = {
 			"Wooo wooo wooooo",
@@ -73,17 +70,20 @@ public class VisibilityEnhancerOverlay extends Overlay
 	private static class SpamTracker
 	{
 		String originalText;
-		String wooText; // Caches the random phrase so it doesn't flicker every frame
+		String wooText;
 		Instant firstSeen;
 		Instant lastSpoke;
 	}
 
-	// WeakHashMap automatically cleans up players when they log out or leave the area
 	private final Map<Player, SpamTracker> spamTrackerMap = new WeakHashMap<>();
-	// ------------------------------
 
 	@Inject
-	private VisibilityEnhancerOverlay(Client client, VisibilityEnhancer plugin, VisibilityEnhancerConfig config, ModelOutlineRenderer modelOutlineRenderer, SpriteManager spriteManager)
+	private VisibilityEnhancerOverlay(
+			Client client,
+			VisibilityEnhancer plugin,
+			VisibilityEnhancerConfig config,
+			ModelOutlineRenderer modelOutlineRenderer,
+			SpriteManager spriteManager)
 	{
 		this.client = client;
 		this.plugin = plugin;
@@ -108,7 +108,7 @@ public class VisibilityEnhancerOverlay extends Overlay
 		WorldPoint localPoint = local != null ? local.getWorldLocation() : null;
 		LocalPoint localLocalPoint = local != null ? local.getLocalLocation() : null;
 
-		// --- Thralls Outlines ---
+		// Thralls outlines
 		HighlightStyle thrallStyle = config.highlightThralls();
 		if (thrallStyle != HighlightStyle.NONE)
 		{
@@ -118,11 +118,17 @@ public class VisibilityEnhancerOverlay extends Overlay
 			{
 				if (npc != null && VisibilityEnhancer.THRALL_IDS.contains(npc.getId()))
 				{
-					if (thrallStyle == HighlightStyle.TILE || thrallStyle == HighlightStyle.TRUE_TILE || thrallStyle == HighlightStyle.BOTH || thrallStyle == HighlightStyle.BOTH_TRUE)
+					if (thrallStyle == HighlightStyle.TILE
+							|| thrallStyle == HighlightStyle.TRUE_TILE
+							|| thrallStyle == HighlightStyle.BOTH
+							|| thrallStyle == HighlightStyle.BOTH_TRUE)
 					{
 						renderFloorTile(graphics, npc, thrallsColor, thrallStyle);
 					}
-					if (thrallStyle == HighlightStyle.OUTLINE || thrallStyle == HighlightStyle.BOTH || thrallStyle == HighlightStyle.BOTH_TRUE)
+
+					if (thrallStyle == HighlightStyle.OUTLINE
+							|| thrallStyle == HighlightStyle.BOTH
+							|| thrallStyle == HighlightStyle.BOTH_TRUE)
 					{
 						renderOutlineLayers(npc, thrallsColor);
 					}
@@ -130,25 +136,31 @@ public class VisibilityEnhancerOverlay extends Overlay
 			}
 		}
 
-		// --- Self Outlines ---
+		// Self outlines
 		HighlightStyle selfStyle = config.highlightSelf();
 		if (local != null && selfStyle != HighlightStyle.NONE)
 		{
 			Model localModel = local.getModel();
 			if (localModel == null || localModel.getOverrideAmount() == 0)
 			{
-				if (selfStyle == HighlightStyle.TILE || selfStyle == HighlightStyle.TRUE_TILE || selfStyle == HighlightStyle.BOTH || selfStyle == HighlightStyle.BOTH_TRUE)
+				if (selfStyle == HighlightStyle.TILE
+						|| selfStyle == HighlightStyle.TRUE_TILE
+						|| selfStyle == HighlightStyle.BOTH
+						|| selfStyle == HighlightStyle.BOTH_TRUE)
 				{
 					renderFloorTile(graphics, local, config.selfOutlineColor(), selfStyle);
 				}
-				if (selfStyle == HighlightStyle.OUTLINE || selfStyle == HighlightStyle.BOTH || selfStyle == HighlightStyle.BOTH_TRUE)
+
+				if (selfStyle == HighlightStyle.OUTLINE
+						|| selfStyle == HighlightStyle.BOTH
+						|| selfStyle == HighlightStyle.BOTH_TRUE)
 				{
 					renderOutlineLayers(local, config.selfOutlineColor());
 				}
 			}
 		}
 
-		// --- Others Outlines ---
+		// Others outlines
 		HighlightStyle othersStyle = config.highlightOthers();
 		if (othersStyle != HighlightStyle.NONE)
 		{
@@ -165,7 +177,10 @@ public class VisibilityEnhancerOverlay extends Overlay
 				{
 					LocalPoint lp1 = p1.getLocalLocation();
 					LocalPoint lp2 = p2.getLocalLocation();
-					if (lp1 == null || lp2 == null) return 0;
+					if (lp1 == null || lp2 == null)
+					{
+						return 0;
+					}
 
 					return Integer.compare(lp2.distanceTo(localLocalPoint), lp1.distanceTo(localLocalPoint));
 				});
@@ -174,7 +189,10 @@ public class VisibilityEnhancerOverlay extends Overlay
 			for (Player player : sortedGhosts)
 			{
 				WorldPoint playerPoint = player.getWorldLocation();
-				if (playerPoint == null) continue;
+				if (playerPoint == null)
+				{
+					continue;
+				}
 
 				Model pModel = player.getModel();
 				if (pModel != null && pModel.getOverrideAmount() != 0)
@@ -184,24 +202,36 @@ public class VisibilityEnhancerOverlay extends Overlay
 
 				if (hideStacked)
 				{
-					if (localPoint != null && playerPoint.equals(localPoint)) continue;
-					if (renderedTiles.contains(playerPoint)) continue;
+					if (localPoint != null && playerPoint.equals(localPoint))
+					{
+						continue;
+					}
+					if (renderedTiles.contains(playerPoint))
+					{
+						continue;
+					}
 					renderedTiles.add(playerPoint);
 				}
 
-				if (othersStyle == HighlightStyle.TILE || othersStyle == HighlightStyle.TRUE_TILE || othersStyle == HighlightStyle.BOTH || othersStyle == HighlightStyle.BOTH_TRUE)
+				if (othersStyle == HighlightStyle.TILE
+						|| othersStyle == HighlightStyle.TRUE_TILE
+						|| othersStyle == HighlightStyle.BOTH
+						|| othersStyle == HighlightStyle.BOTH_TRUE)
 				{
 					renderFloorTile(graphics, player, othersColor, othersStyle);
 				}
-				if (othersStyle == HighlightStyle.OUTLINE || othersStyle == HighlightStyle.BOTH || othersStyle == HighlightStyle.BOTH_TRUE)
+
+				if (othersStyle == HighlightStyle.OUTLINE
+						|| othersStyle == HighlightStyle.BOTH
+						|| othersStyle == HighlightStyle.BOTH_TRUE)
 				{
 					renderOutlineLayers(player, othersColor);
 				}
-				renderStackWarnings(graphics);
-
-				return null;
 			}
 		}
+
+		// Stack warnings should render independently of highlightOthers
+		renderStackWarnings(graphics);
 
 		boolean othersCustomPrayers = config.othersTransparentPrayers();
 
@@ -210,7 +240,6 @@ public class VisibilityEnhancerOverlay extends Overlay
 			Set<WorldPoint> renderedPrayerTiles = new HashSet<>();
 			List<Rectangle> renderedTextBounds = new ArrayList<>();
 
-			// --- Track native text from non-ghosted players (like yourself) ---
 			for (Player p : client.getPlayers())
 			{
 				if (p != null && !plugin.getGhostedPlayers().contains(p))
@@ -236,7 +265,6 @@ public class VisibilityEnhancerOverlay extends Overlay
 					}
 				}
 			}
-			// -----------------------------------------------------------------------
 
 			for (Player player : plugin.getGhostedPlayers())
 			{
@@ -316,7 +344,10 @@ public class VisibilityEnhancerOverlay extends Overlay
 			}
 		}
 
-		if (lp == null) return;
+		if (lp == null)
+		{
+			return;
+		}
 
 		Polygon poly = Perspective.getCanvasTilePoly(client, lp);
 		if (poly != null)
@@ -324,7 +355,14 @@ public class VisibilityEnhancerOverlay extends Overlay
 			Stroke primaryStroke;
 			if (config.borderDashed())
 			{
-				primaryStroke = new BasicStroke(config.outlineWidth(), BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10.0f, new float[]{10.0f, 10.0f}, 0.0f);
+				primaryStroke = new BasicStroke(
+						config.outlineWidth(),
+						BasicStroke.CAP_BUTT,
+						BasicStroke.JOIN_MITER,
+						10.0f,
+						new float[]{10.0f, 10.0f},
+						0.0f
+				);
 			}
 			else
 			{
@@ -334,7 +372,12 @@ public class VisibilityEnhancerOverlay extends Overlay
 			if (config.enableGlow())
 			{
 				Stroke glowStroke = new BasicStroke(config.outlineWidth() + config.glowWidth());
-				Color glowColor = new Color(color.getRed(), color.getGreen(), color.getBlue(), Math.max(0, color.getAlpha() - 100));
+				Color glowColor = new Color(
+						color.getRed(),
+						color.getGreen(),
+						color.getBlue(),
+						Math.max(0, color.getAlpha() - 100)
+				);
 				graphics.setColor(glowColor);
 				graphics.setStroke(glowStroke);
 				graphics.draw(poly);
@@ -358,17 +401,29 @@ public class VisibilityEnhancerOverlay extends Overlay
 	private void drawTransparentPrayer(Graphics2D graphics, Player player, int opacityPercent)
 	{
 		HeadIcon icon = player.getOverheadIcon();
-		if (icon == null) return;
+		if (icon == null)
+		{
+			return;
+		}
 
 		int spriteId = getSpriteId(icon);
-		if (spriteId == -1) return;
+		if (spriteId == -1)
+		{
+			return;
+		}
 
 		BufferedImage prayerImage = spriteManager.getSprite(spriteId, 0);
-		if (prayerImage == null) return;
+		if (prayerImage == null)
+		{
+			return;
+		}
 
 		int zOffset = 20;
 		Point point = player.getCanvasImageLocation(prayerImage, player.getLogicalHeight() + zOffset);
-		if (point == null) return;
+		if (point == null)
+		{
+			return;
+		}
 
 		int drawX = point.getX();
 		int drawY = point.getY() - 25;
@@ -377,17 +432,22 @@ public class VisibilityEnhancerOverlay extends Overlay
 		Composite originalComposite = graphics.getComposite();
 		graphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
 		graphics.drawImage(prayerImage, drawX, drawY, null);
-
 		graphics.setComposite(originalComposite);
 	}
 
 	private void drawTransparentHpBar(Graphics2D graphics, Player player, int ratio, int scale, int opacityPercent)
 	{
 		int alpha = (int) ((opacityPercent / 100f) * 255);
-		if (alpha <= 0) return;
+		if (alpha <= 0)
+		{
+			return;
+		}
 
 		Point point = player.getCanvasTextLocation(graphics, "", player.getLogicalHeight() + 15);
-		if (point == null) return;
+		if (point == null)
+		{
+			return;
+		}
 
 		int width = 30;
 		int height = 5;
@@ -405,28 +465,33 @@ public class VisibilityEnhancerOverlay extends Overlay
 	private void drawTransparentHitsplats(Graphics2D graphics, Player player, List<VisibilityEnhancer.CustomHitsplat> hitsplats, int opacityPercent)
 	{
 		int alpha = (int) ((opacityPercent / 100f) * 255);
-
-		if (alpha <= 0) return;
+		if (alpha <= 0)
+		{
+			return;
+		}
 
 		int bgAlpha = config.hideHitsplatBackground() ? 0 : (int) (alpha * 0.8f);
-		int boxOutlineAlpha = config.hideHitsplatBackground() ? 0 : alpha;
 
 		LocalPoint lp = player.getLocalLocation();
-		if (lp == null) return;
+		if (lp == null)
+		{
+			return;
+		}
 
 		Point basePoint = Perspective.localToCanvas(client, lp, client.getPlane(), player.getLogicalHeight() / 2);
-		if (basePoint == null) return;
+		if (basePoint == null)
+		{
+			return;
+		}
 
 		graphics.setFont(FontManager.getRunescapeBoldFont().deriveFont(13f));
 		FontMetrics fm = graphics.getFontMetrics();
 
 		int boxTextHeight = fm.getAscent() - 1;
-
 		int paddingX = 1;
 		int paddingY = 1;
 		int boxHeight = boxTextHeight + (paddingY * 2);
 		int ySpacing = boxHeight + 2;
-
 		int size = hitsplats.size();
 
 		int shiftDown = 0;
@@ -437,16 +502,23 @@ public class VisibilityEnhancerOverlay extends Overlay
 			int ceilingY = hpBarBottom + 2;
 
 			int highestOffsetY = 0;
-			if (size == 2) highestOffsetY = -(ySpacing / 2);
-			else if (size == 4) highestOffsetY = -ySpacing;
-			else if (size > 1) {
+			if (size == 2)
+			{
+				highestOffsetY = -(ySpacing / 2);
+			}
+			else if (size == 4)
+			{
+				highestOffsetY = -ySpacing;
+			}
+			else if (size > 1)
+			{
 				int totalRows = (size + 1) / 2;
 				highestOffsetY = -((totalRows - 1) * ySpacing / 2);
 			}
 
 			int highestBoxY = basePoint.getY() + highestOffsetY - (boxHeight / 2) - 10;
-
-			if (highestBoxY < ceilingY) {
+			if (highestBoxY < ceilingY)
+			{
 				shiftDown = ceilingY - highestBoxY;
 			}
 		}
@@ -486,16 +558,33 @@ public class VisibilityEnhancerOverlay extends Overlay
 			}
 			else if (size == 4)
 			{
-				if (i == 0)      { offsetX = 0; offsetY = -ySpacing; }
-				else if (i == 1) { offsetX = -(xSpacing / 2); offsetY = 0; }
-				else if (i == 2) { offsetX = (xSpacing / 2); offsetY = 0; }
-				else if (i == 3) { offsetX = 0; offsetY = ySpacing; }
+				if (i == 0)
+				{
+					offsetX = 0;
+					offsetY = -ySpacing;
+				}
+				else if (i == 1)
+				{
+					offsetX = -(xSpacing / 2);
+					offsetY = 0;
+				}
+				else if (i == 2)
+				{
+					offsetX = (xSpacing / 2);
+					offsetY = 0;
+				}
+				else if (i == 3)
+				{
+					offsetX = 0;
+					offsetY = ySpacing;
+				}
 			}
 			else
 			{
 				int row = i / 2;
 				int col = i % 2;
 				int totalRows = (size + 1) / 2;
+
 				if (row == totalRows - 1 && size % 2 != 0)
 				{
 					offsetX = 0;
@@ -513,8 +602,9 @@ public class VisibilityEnhancerOverlay extends Overlay
 
 			if (bgAlpha > 0)
 			{
-				Color backColor = hit.getAmount() == 0 ?
-						new Color(50, 90, 160, bgAlpha) : new Color(180, 40, 40, bgAlpha);
+				Color backColor = hit.getAmount() == 0
+						? new Color(50, 90, 160, bgAlpha)
+						: new Color(180, 40, 40, bgAlpha);
 				graphics.setColor(backColor);
 				graphics.fillRoundRect(boxX, boxY, boxWidth, boxHeight, 2, 2);
 			}
@@ -522,40 +612,36 @@ public class VisibilityEnhancerOverlay extends Overlay
 			int textDrawX = boxX + paddingX;
 			int textDrawY = boxY + boxTextHeight + paddingY + 1;
 
-			if (alpha > 0)
-			{
-				Color textShadowColor = new Color(0, 0, 0, alpha);
-				Color textColor = new Color(255, 255, 255, alpha);
+			Color textShadowColor = new Color(0, 0, 0, alpha);
+			Color textColor = new Color(255, 255, 255, alpha);
 
-				graphics.setColor(textShadowColor);
-				graphics.drawString(text, textDrawX + 1, textDrawY + 1);
+			graphics.setColor(textShadowColor);
+			graphics.drawString(text, textDrawX + 1, textDrawY + 1);
 
-				graphics.setColor(textColor);
-				graphics.drawString(text, textDrawX, textDrawY);
-			}
+			graphics.setColor(textColor);
+			graphics.drawString(text, textDrawX, textDrawY);
 		}
 	}
 
 	private void drawOverheadText(Graphics2D graphics, Player player, List<Rectangle> renderedTextBounds)
 	{
 		String text = player.getOverheadText();
-		if (text == null || text.isEmpty()) return;
+		if (text == null || text.isEmpty())
+		{
+			return;
+		}
 
-		// --- SPAM FILTER LOGIC ---
 		SpamTracker tracker = spamTrackerMap.computeIfAbsent(player, p -> new SpamTracker());
 		Instant now = Instant.now();
 
-		// If it's the exact SAME message
 		if (tracker.originalText != null && tracker.originalText.equals(text))
 		{
 			long elapsedSinceFirst = Duration.between(tracker.firstSeen, now).toMillis();
 
-			// Hide if between 4s and 10s
 			if (elapsedSinceFirst > MESSAGE_DISPLAY_DURATION_MS && elapsedSinceFirst < MESSAGE_COOLDOWN_MS)
 			{
 				return;
 			}
-			// Reset if over 10s (allow it to display again)
 			else if (elapsedSinceFirst >= MESSAGE_COOLDOWN_MS)
 			{
 				tracker.firstSeen = now;
@@ -563,30 +649,28 @@ public class VisibilityEnhancerOverlay extends Overlay
 				tracker.wooText = WOO_MESSAGES[ThreadLocalRandom.current().nextInt(WOO_MESSAGES.length)];
 			}
 		}
-		// If it's a completely NEW message
 		else
 		{
-			// Check if they are trying to speak too quickly since their last approved message
-			if (tracker.lastSpoke != null && Duration.between(tracker.lastSpoke, now).toMillis() < FAST_TYPING_COOLDOWN_MS)
+			if (tracker.lastSpoke != null
+					&& Duration.between(tracker.lastSpoke, now).toMillis() < FAST_TYPING_COOLDOWN_MS)
 			{
-				// They are spamming different messages too fast, ignore this one
 				return;
 			}
 
-			// Approved! Update tracker to this new message
 			tracker.originalText = text;
 			tracker.wooText = WOO_MESSAGES[ThreadLocalRandom.current().nextInt(WOO_MESSAGES.length)];
 			tracker.firstSeen = now;
 			tracker.lastSpoke = now;
 		}
-		// -------------------------
 
-		// Decide which text to actually draw
 		String displayText = config.funGhostChat() ? tracker.wooText : text;
 
 		int zOffset = 20;
 		Point textPoint = player.getCanvasTextLocation(graphics, displayText, player.getLogicalHeight() + zOffset);
-		if (textPoint == null) return;
+		if (textPoint == null)
+		{
+			return;
+		}
 
 		graphics.setFont(FontManager.getRunescapeBoldFont());
 		FontMetrics fontMetrics = graphics.getFontMetrics();
@@ -619,7 +703,6 @@ public class VisibilityEnhancerOverlay extends Overlay
 		renderedTextBounds.add(currentBounds);
 
 		Point adjustedPoint = new Point(drawX, drawY);
-
 		OverlayUtil.renderTextLocation(graphics, adjustedPoint, displayText, Color.YELLOW);
 	}
 
@@ -627,13 +710,20 @@ public class VisibilityEnhancerOverlay extends Overlay
 	{
 		switch (icon)
 		{
-			case MELEE: return SpriteID.PRAYER_PROTECT_FROM_MELEE;
-			case RANGED: return SpriteID.PRAYER_PROTECT_FROM_MISSILES;
-			case MAGIC: return SpriteID.PRAYER_PROTECT_FROM_MAGIC;
-			case RETRIBUTION: return SpriteID.PRAYER_RETRIBUTION;
-			case SMITE: return SpriteID.PRAYER_SMITE;
-			case REDEMPTION: return SpriteID.PRAYER_REDEMPTION;
-			default: return -1;
+			case MELEE:
+				return SpriteID.PRAYER_PROTECT_FROM_MELEE;
+			case RANGED:
+				return SpriteID.PRAYER_PROTECT_FROM_MISSILES;
+			case MAGIC:
+				return SpriteID.PRAYER_PROTECT_FROM_MAGIC;
+			case RETRIBUTION:
+				return SpriteID.PRAYER_RETRIBUTION;
+			case SMITE:
+				return SpriteID.PRAYER_SMITE;
+			case REDEMPTION:
+				return SpriteID.PRAYER_REDEMPTION;
+			default:
+				return -1;
 		}
 	}
 
@@ -645,14 +735,14 @@ public class VisibilityEnhancerOverlay extends Overlay
 		}
 
 		Player local = client.getLocalPlayer();
-		if (local == null) return;
+		if (local == null)
+		{
+			return;
+		}
 
-		// --- COMBAT CHECK ---
 		if (config.stackWarningOnlyInCombat())
 		{
-			// You are in combat if you have a target, or if your HP bar is visible (ratio > -1)
 			boolean inCombat = local.getInteracting() != null || local.getHealthRatio() > -1;
-
 			if (!inCombat)
 			{
 				return;
@@ -660,13 +750,14 @@ public class VisibilityEnhancerOverlay extends Overlay
 		}
 
 		WorldPoint localPoint = local.getWorldLocation();
-
-		// Track how many players are on each WorldPoint
 		Map<WorldPoint, Integer> tileCounts = new HashMap<>();
 
 		for (Player p : client.getPlayers())
 		{
-			if (p == null) continue;
+			if (p == null)
+			{
+				continue;
+			}
 
 			WorldPoint wp = p.getWorldLocation();
 			if (wp != null)
@@ -680,67 +771,66 @@ public class VisibilityEnhancerOverlay extends Overlay
 			int count = entry.getValue();
 			WorldPoint wp = entry.getKey();
 
-			// --- ONLY MY TILE CHECK ---
 			if (config.stackWarningOnlySelf() && (localPoint == null || !localPoint.equals(wp)))
 			{
-				continue; // Skip drawing if the user is not on this tile
+				continue;
 			}
 
-			// ONLY draw if the stack meets or exceeds the user's chosen threshold
 			if (count >= config.stackThreshold())
 			{
 				LocalPoint lp = LocalPoint.fromWorld(client, wp);
-
-				if (lp == null) continue;
+				if (lp == null)
+				{
+					continue;
+				}
 
 				Color baseColor = config.stackWarningColor();
 
-				// Calculate a subtle pulse using the game cycle (sine wave)
 				int cycle = client.getGameCycle();
-				double pulseRange = 0.6; // Fluctuates between 40% and 100% of the base alpha
-				double sine = Math.sin(cycle * 0.15); // Adjust speed of the pulse here
+				double pulseRange = 0.6;
+				double sine = Math.sin(cycle * 0.15);
 				int pulseAlpha = (int) (baseColor.getAlpha() * (1.0 - (pulseRange * (sine + 1.0) / 2.0)));
 				pulseAlpha = Math.max(0, Math.min(255, pulseAlpha));
 
-				Color pulseColor = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), pulseAlpha);
+				Color pulseColor = new Color(
+						baseColor.getRed(),
+						baseColor.getGreen(),
+						baseColor.getBlue(),
+						pulseAlpha
+				);
 
-				// Draw the pulsing floor tile
 				Polygon poly = Perspective.getCanvasTilePoly(client, lp);
 				if (poly != null)
 				{
-					// Only drawing the border now (no fill), so we make it slightly thicker and apply the pulse to it
 					graphics.setStroke(new BasicStroke(2));
 					graphics.setColor(pulseColor);
 					graphics.draw(poly);
 				}
 
-				// --- 3D ANCHORED TEXT POSITION ---
-				// A tile is 128x128 local units. Moving 64 units puts us exactly on the edge.
 				int edgeOffset = Perspective.LOCAL_TILE_SIZE / 2;
-
-				// X + edgeOffset moves to the right edge. Y - edgeOffset moves to the bottom edge.
 				LocalPoint cornerAnchor = new LocalPoint(lp.getX() + edgeOffset, lp.getY() - edgeOffset);
 
 				String countText = String.valueOf(count);
-				int zOffset = 0; // Floor height
-
-				// Calculate the 2D screen point based on the 3D corner anchor
+				int zOffset = 0;
 				Point textPoint = Perspective.getCanvasTextLocation(client, graphics, cornerAnchor, countText, zOffset);
 
 				if (textPoint != null)
 				{
 					graphics.setFont(FontManager.getRunescapeBoldFont());
 
-					// Make the text stronger than the base color, but cap it at 220 so it never reaches 255 (fully opaque)
 					int textAlpha = Math.min(220, baseColor.getAlpha() + 60);
 
-					Color textColor = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), textAlpha);
-					Color shadowColor = new Color(0, 0, 0, textAlpha); // Transparent shadow matching text alpha
+					Color textColor = new Color(
+							baseColor.getRed(),
+							baseColor.getGreen(),
+							baseColor.getBlue(),
+							textAlpha
+					);
+					Color shadowColor = new Color(0, 0, 0, textAlpha);
 
 					int drawX = textPoint.getX() + 5;
 					int drawY = textPoint.getY();
 
-					// Manually draw the shadow and text to ensure opacity affects everything
 					graphics.setColor(shadowColor);
 					graphics.drawString(countText, drawX + 1, drawY + 1);
 
