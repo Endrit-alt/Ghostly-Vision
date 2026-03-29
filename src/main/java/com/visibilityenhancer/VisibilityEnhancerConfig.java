@@ -418,11 +418,11 @@ public interface VisibilityEnhancerConfig extends Config
 			section = stackSection,
 			description = "Shows a tile pulse and count when multiple players are on the same tile."
 	)
-	default boolean enableStackWarnings() { return false; }
+	default boolean enableStackWarnings() { return true; }
 
 	@ConfigItem(
 			keyName = "stackWarningOnlyInCombat",
-			name = "Only in Combat",
+			name = "Only In Combat",
 			position = 2,
 			section = stackSection,
 			description = "Only show stack warnings when you are actively targeting something or taking damage."
@@ -436,7 +436,7 @@ public interface VisibilityEnhancerConfig extends Config
 			section = stackSection,
 			description = "Only show the stack warning if you are standing on the stacked tile."
 	)
-	default boolean stackWarningOnlySelf() { return false; }
+	default boolean stackWarningOnlySelf() { return true; }
 
 	@Range(min = 2, max = 8)
 	@ConfigItem(
@@ -456,7 +456,7 @@ public interface VisibilityEnhancerConfig extends Config
 			section = stackSection,
 			description = "Color of the pulse and text when the stack threshold is reached."
 	)
-	default Color stackWarningColor() { return new Color(255, 0, 0, 150); } // Default to Red
+	default Color stackWarningColor() { return new Color(255, 0, 0, 25); } // Default to Red
 
 
 
