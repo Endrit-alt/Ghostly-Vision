@@ -138,14 +138,25 @@ public class VisibilityEnhancer extends Plugin
       public void hotkeyPressed()
       {
          peekHeld = true;
-         clientThread.invokeLater(() -> forceOpacityUpdate());
+         clientThread.invokeLater(() -> {
+            checkStateTransition(); // Wakes up the plugin if outside a boss room
+            forceOpacityUpdate();
+         });
       }
 
       @Override
       public void hotkeyReleased()
       {
          peekHeld = false;
-         clientThread.invokeLater(() -> forceOpacityUpdate());
+         clientThread.invokeLater(() -> {
+            checkStateTransition(); // Puts it to sleep and cleans up if outside a boss room
+
+            // Only update opacity if we are STILL active (e.g., inside a boss room)
+            if (isActive())
+            {
+               forceOpacityUpdate();
+            }
+         });
       }
    };
 
@@ -271,6 +282,11 @@ public class VisibilityEnhancer extends Plugin
       if (!pluginToggledOn)
       {
          return false;
+      }
+
+      if (peekHeld)
+      {
+         return true;
       }
 
       if (!config.enableAreaFiltering())
@@ -547,54 +563,22 @@ public class VisibilityEnhancer extends Plugin
       }
    }
 
-   @Subscribe
-   public void onGameTick(GameTick event)
+   private void updatePlayersInRange()
    {
-      checkStateTransition();
-
-      if (!isActive())
-      {
-         return;
-      }
-
       Player local = client.getLocalPlayer();
       if (local == null)
       {
-         clearAllGhosting();
          return;
-      }
-
-      myProjectiles.removeIf(p -> client.getGameCycle() >= p.getEndCycle());
-
-      if (config.othersTransparentPrayers())
-      {
-         customHitsplats.values().forEach(list ->
-                 list.removeIf(h -> client.getTickCount() >= h.getDespawnTick()));
-      }
-      else
-      {
-         customHitsplats.clear();
-      }
-
-      if (config.selfClearGround())
-      {
-         applyClothingFilter(local);
-      }
-      else if (originalEquipmentMap.containsKey(local))
-      {
-         restoreClothing(local);
       }
 
       LocalPoint localLoc = local.getLocalLocation();
       if (localLoc == null)
       {
-         clearAllGhosting();
          return;
       }
 
       inRange.clear();
       currentInRange.clear();
-      noLongerGhosted.clear();
 
       boolean ignoreFriends = config.ignoreFriends();
       int maxDist = config.proximityRange();
@@ -658,6 +642,56 @@ public class VisibilityEnhancer extends Plugin
       {
          currentInRange.addAll(inRange);
       }
+   }
+
+   @Subscribe
+   public void onGameTick(GameTick event)
+   {
+      checkStateTransition();
+
+      if (!isActive())
+      {
+         return;
+      }
+
+      Player local = client.getLocalPlayer();
+      if (local == null)
+      {
+         clearAllGhosting();
+         return;
+      }
+
+      myProjectiles.removeIf(p -> client.getGameCycle() >= p.getEndCycle());
+
+      if (config.othersTransparentPrayers())
+      {
+         customHitsplats.values().forEach(list ->
+                 list.removeIf(h -> client.getTickCount() >= h.getDespawnTick()));
+      }
+      else
+      {
+         customHitsplats.clear();
+      }
+
+      if (config.selfClearGround())
+      {
+         applyClothingFilter(local);
+      }
+      else if (originalEquipmentMap.containsKey(local))
+      {
+         restoreClothing(local);
+      }
+
+      LocalPoint localLoc = local.getLocalLocation();
+      if (localLoc == null)
+      {
+         clearAllGhosting();
+         return;
+      }
+
+      noLongerGhosted.clear();
+
+      updatePlayersInRange();
 
       boolean hideOthersClothes = config.othersClearGround();
 
@@ -926,6 +960,8 @@ public class VisibilityEnhancer extends Plugin
          return;
       }
 
+      updatePlayersInRange();
+
       for (Player p : currentInRange)
       {
          int pOpacity = getEffectiveOpacity(p);
@@ -938,6 +974,8 @@ public class VisibilityEnhancer extends Plugin
             restoreOpacity(p);
          }
       }
+
+      ghostedPlayers.addAll(currentInRange);
    }
 
    private void checkStateTransition()
@@ -1277,6 +1315,8 @@ public class VisibilityEnhancer extends Plugin
       }
 
       ghostedPlayers.clear();
+      inRange.clear();
+      currentInRange.clear();
       originalEquipmentMap.clear();
       myProjectiles.clear();
       customHitsplats.clear();

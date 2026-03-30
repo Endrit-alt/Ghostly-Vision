@@ -103,6 +103,42 @@ public interface VisibilityEnhancerConfig extends Config
 	)
 	default int fadeEndDistance() { return 6; }
 
+	// --- HOTKEY SECTION ---
+	@ConfigSection(
+			name = "Hotkeys",
+			description = "Hotkey settings for the plugin.",
+			position = 40
+	)
+	String hotkeySection = "hotkeySection";
+
+	@ConfigItem(
+			keyName = "toggleHotkey",
+			name = "Toggle Plugin",
+			position = 1,
+			section = hotkeySection,
+			description = "Double Press this key to enable or disable the plugin's effects."
+	)
+	default Keybind toggleHotkey() { return Keybind.NOT_SET; }
+
+	@ConfigItem(
+			keyName = "doubleTapDelay",
+			name = "Double-tap delay",
+			description = "Delay for the double-tap to toggle the plugin off. 0 to disable.",
+			position = 2,
+			section = hotkeySection
+	)
+	@Units(Units.MILLISECONDS)
+	default int doubleTapDelay() { return 250; }
+
+	@ConfigItem(
+			keyName = "peekHotkey",
+			name = "Peek Through (Hold)",
+			position = 3,
+			section = hotkeySection,
+			description = "Hold this key to temporarily maximize visibility: hides thralls, pets, projectiles, and fully ghosts teammates."
+	)
+	default Keybind peekHotkey() { return Keybind.NOT_SET; }
+
 
 	// --- EXTRAS SECTION ---
 	@ConfigSection(
@@ -386,43 +422,6 @@ public interface VisibilityEnhancerConfig extends Config
 			description = "Makes the line dashed instead of solid for Tiles and True Tiles."
 	)
 	default boolean borderDashed() { return false; }
-
-	// --- HOTKEY SECTION ---
-	@ConfigSection(
-			name = "Hotkeys",
-			description = "Hotkey settings for the plugin.",
-			position = 40
-	)
-	String hotkeySection = "hotkeySection";
-
-	@ConfigItem(
-			keyName = "toggleHotkey",
-			name = "Toggle Plugin",
-			position = 1,
-			section = hotkeySection,
-			description = "Double Press this key to enable or disable the plugin's effects."
-	)
-	default Keybind toggleHotkey() { return Keybind.NOT_SET; }
-
-	@ConfigItem(
-			keyName = "doubleTapDelay",
-			name = "Double-tap delay",
-			description = "Delay for the double-tap to toggle the plugin off. 0 to disable.",
-			position = 2,
-			section = hotkeySection
-	)
-	@Units(Units.MILLISECONDS)
-	default int doubleTapDelay() { return 250; }
-
-	@ConfigItem(
-			keyName = "peekHotkey",
-			name = "Peek Through (Hold)",
-			position = 3,
-			section = hotkeySection,
-			description = "Hold this key to temporarily maximize visibility: hides thralls, pets, projectiles, and fully ghosts teammates."
-	)
-	default Keybind peekHotkey() { return Keybind.NOT_SET; }
-
 
 	// --- AREA FILTERING SECTION ---
 	@ConfigSection(
