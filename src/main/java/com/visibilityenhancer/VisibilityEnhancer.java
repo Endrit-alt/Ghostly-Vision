@@ -369,41 +369,6 @@ public class VisibilityEnhancer extends Plugin
       return false;
    }
 
-   private boolean isInCriticalBossRoom()
-   {
-      Player local = client.getLocalPlayer();
-      if (local == null)
-      {
-         return false;
-      }
-
-      LocalPoint lp = local.getLocalLocation();
-      if (lp == null)
-      {
-         return false;
-      }
-
-      int regionId = WorldPoint.fromLocalInstance(client, lp).getRegionID();
-
-      switch (regionId)
-      {
-         case 12613: // Maiden
-         case 12612: // Xarpus
-         case 13123: // Sotetseg
-         case 13379: // Sotetseg Maze
-         case 12611: // Verzik
-         case 12889: // Olm
-         case 15184: // Wardens p1
-            // case 14676: Akkha
-         case 14164: // Kephri
-         case 15188: // Ba-Ba
-         case 11601: // Nex
-         case 15515: // Nightmare
-            return true;
-         default:
-            return false;
-      }
-   }
 
    @Subscribe
    public void onHitsplatApplied(HitsplatApplied event)
@@ -824,15 +789,12 @@ public class VisibilityEnhancer extends Plugin
       wasActive = true;
 
       criticalProjectileAliveThisFrame = false;
-      if (isInCriticalBossRoom())
+      for (Projectile proj : client.getProjectiles())
       {
-         for (Projectile proj : client.getProjectiles())
+         if (BOSS_PROJECTILES.contains(proj.getId()))
          {
-            if (BOSS_PROJECTILES.contains(proj.getId()))
-            {
-               criticalProjectileAliveThisFrame = true;
-               break;
-            }
+            criticalProjectileAliveThisFrame = true;
+            break;
          }
       }
 
