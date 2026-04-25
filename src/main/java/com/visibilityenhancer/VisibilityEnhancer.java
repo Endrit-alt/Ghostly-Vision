@@ -89,6 +89,10 @@ public class VisibilityEnhancer extends Plugin
    private final Map<Player, Integer> overrideLastSeenCycle = new HashMap<>();
    private final Set<Player> overrideForcedPlayers = new HashSet<>();
 
+   // Cached Maps for onBeforeRender to prevent frame-by-frame memory allocation
+   private final Map<byte[], Model> arrayToModel = new HashMap<>();
+   private final Map<byte[], Integer> arrayState = new HashMap<>();
+
    private final Hooks.RenderableDrawListener drawListener = this::shouldDraw;
 
    private Player cachedLocalPlayer;
@@ -183,9 +187,9 @@ public class VisibilityEnhancer extends Plugin
            5789, 6045, // Yama
            14180,  // Doom of Mokhaiotl
            13210, // Scurrius
-           5939, //Hueycotl
-           15515, //Nightmare
-           13106 //Zalcano
+           5939, // Hueycotl
+           15515, // Nightmare
+           13106 // Zalcano
    );
 
    private static final Set<Integer> EXEMPT_ANIMATIONS = ImmutableSet.<Integer>builder()
@@ -318,21 +322,7 @@ public class VisibilityEnhancer extends Plugin
          return true;
       }
 
-      Player local = client.getLocalPlayer();
-      if (local == null)
-      {
-         return false;
-      }
-
-      LocalPoint lp = local.getLocalLocation();
-      if (lp == null)
-      {
-         return false;
-      }
-
-      int regionId = WorldPoint.fromLocalInstance(client, lp).getRegionID();
-
-      switch (regionId)
+      switch (currentRegionId)
       {
          case 12613:
             return config.tobMaiden();
@@ -829,8 +819,8 @@ public class VisibilityEnhancer extends Plugin
       int othersAlpha = clampAlpha(othersOpacity);
       int selfAlpha = clampAlpha(selfOpacity);
 
-      Map<byte[], Model> arrayToModel = new HashMap<>();
-      Map<byte[], Integer> arrayState = new HashMap<>();
+      arrayToModel.clear();
+      arrayState.clear();
 
       final int STATE_OTHERS = 0;
       final int STATE_MINE = 1;
