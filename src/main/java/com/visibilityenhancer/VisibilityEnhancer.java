@@ -718,6 +718,18 @@ public class VisibilityEnhancer extends Plugin
    @Subscribe
    public void onGameTick(GameTick event)
    {
+      // 1. UPDATE THE REGION FIRST so isActive() knows exactly where we are
+      Player local = client.getLocalPlayer();
+      if (local != null && local.getLocalLocation() != null)
+      {
+         currentRegionId = WorldPoint.fromLocalInstance(client, local.getLocalLocation()).getRegionID();
+      }
+      else
+      {
+         currentRegionId = -1;
+      }
+
+      // 2. NOW check state transitions and if we should be active
       checkStateTransition();
 
       if (!isActive())
@@ -725,24 +737,7 @@ public class VisibilityEnhancer extends Plugin
          return;
       }
 
-      Player local = client.getLocalPlayer();
-      if (local == null)
-      {
-         clearAllGhosting();
-         currentRegionId = -1;
-         return;
-      }
-
       LocalPoint localLoc = local.getLocalLocation();
-      if (localLoc == null)
-      {
-         clearAllGhosting();
-         currentRegionId = -1;
-         return;
-      }
-
-      // Update cached region using fromLocalInstance to account for instanced raids
-      currentRegionId = WorldPoint.fromLocalInstance(client, localLoc).getRegionID();
 
       myProjectiles.removeIf(p -> client.getGameCycle() >= p.getEndCycle());
 
