@@ -196,7 +196,7 @@ public class VisibilityEnhancer extends Plugin
 
    private static final Set<Integer> EXEMPT_ANIMATIONS = ImmutableSet.<Integer>builder()
            .add(1378, 7642, 7643, 7514, 1062, 1203, 7644, 7640, 7638, 10172, 5062, 9168, 8104)
-           .add(714, 2116) // Standard spellbook teleport
+           .add(714) // Standard spellbook teleport
 
            .add(AnimationID.CONSUMING)
 
