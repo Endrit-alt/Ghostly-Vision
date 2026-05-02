@@ -483,8 +483,7 @@ public class VisibilityEnhancer extends Plugin
             {
                hasGraphic = true;
             }
-
-
+            
             if (!hasGraphic && cachedLocalPlayer.getSpotAnims() != null)
             {
                for (ActorSpotAnim spotAnim : cachedLocalPlayer.getSpotAnims())
