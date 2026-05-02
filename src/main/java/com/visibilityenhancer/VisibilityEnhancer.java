@@ -194,6 +194,7 @@ public class VisibilityEnhancer extends Plugin
            13106 // Zalcano
    );
 
+
    private static final Set<Integer> EXEMPT_ANIMATIONS = ImmutableSet.<Integer>builder()
            .add(1378, 7642, 7643, 7514, 1062, 1203, 7644, 7640, 7638, 10172, 5062, 9168, 8104)
            .add(714) // Standard spellbook teleport
@@ -266,6 +267,15 @@ public class VisibilityEnhancer extends Plugin
            .add(1604, 1605) //sotesegg
            .add (1997, 1998, 2002, 2003) //nex
            .add (2197, 2198, 2199, 2200, 2203) //wardens
+           .build();
+
+   // Graphics that should NOT un-cull the player (like weapon attack glows)
+   private static final Set<Integer> IGNORED_SELF_GRAPHICS = ImmutableSet.<Integer>builder()
+           .add(111)
+           .add(1888,1923,1925,1927,1929,1931,1933,1935) //bowfa
+           .add(1540,1900,2125,2903,2904,2905,2906,3018,3720,1455, 1458, 1461, 1464, 84,87,1543,1546,1719,1722) //casting
+           .add(2059,2903,2904,2905,2906,3720,1250,1251)
+           .add(2834,1205,1206,1207,1208,2804,1292,1171) //specs
            .build();
 
    @Getter
@@ -462,15 +472,34 @@ public class VisibilityEnhancer extends Plugin
       localPlayerExemptFromCull = false;
       if (cachedLocalPlayer != null)
       {
-         // Ignore graphics if the player is doing a teleport or skilling animation
          boolean hasGraphic = false;
+
+         // We still skip graphics if doing a skilling/teleport animation (EXEMPT_ANIMATIONS)
          if (!isExemptAnimation(cachedLocalPlayer))
          {
-            hasGraphic = cachedLocalPlayer.getGraphic() != -1 ||
-                    (cachedLocalPlayer.getSpotAnims() != null && cachedLocalPlayer.getSpotAnims().iterator().hasNext());
+            // Check the primary graphic slot
+            int currentGraphic = cachedLocalPlayer.getGraphic();
+            if (currentGraphic != -1 && !IGNORED_SELF_GRAPHICS.contains(currentGraphic))
+            {
+               hasGraphic = true;
+            }
+
+            // Check the SpotAnims table
+            if (!hasGraphic && cachedLocalPlayer.getSpotAnims() != null)
+            {
+               for (ActorSpotAnim spotAnim : cachedLocalPlayer.getSpotAnims())
+               {
+                  if (!IGNORED_SELF_GRAPHICS.contains(spotAnim.getId()))
+                  {
+                     hasGraphic = true;
+                     break; // We found a valid boss graphic, stop looking
+                  }
+               }
+            }
          }
 
          Model model = cachedLocalPlayer.getModel();
+         // Check if they currently have an override, OR if they are still within the 2-cycle "clear" delay
          boolean hasOverride = model != null && (model.getOverrideAmount() != 0 || overrideForcedPlayers.contains(cachedLocalPlayer));
 
          localPlayerExemptFromCull = hasGraphic || hasOverride;
