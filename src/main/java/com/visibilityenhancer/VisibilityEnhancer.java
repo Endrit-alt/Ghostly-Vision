@@ -1012,10 +1012,7 @@ public class VisibilityEnhancer extends Plugin
                return false;
             }
          }
-
-         // --- Hide Stacked Players ---
-         // If they aren't the local player, aren't in the priority limit,
-         // and are standing on a tile occupied by a priority player, cull them.
+         
          if (player != cachedLocalPlayer && config.hideStackedOutlines() && !currentInRange.contains(player))
          {
             LocalPoint lp = player.getLocalLocation();
